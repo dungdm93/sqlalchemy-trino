@@ -1,9 +1,10 @@
 from typing import *
 
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.default import DefaultDialect
 
 from . import compiler
+from . import dbapi as trino_dbapi
 from . import types
 
 
@@ -40,8 +41,7 @@ class TrinoDialect(DefaultDialect):
         """
         ref: https://www.python.org/dev/peps/pep-0249/#module-interface
         """
-        import trino.dbapi as module
-        return module
+        return trino_dbapi
 
     def get_columns(self, connection: Connection,
                     table_name: str, schema: str = None, **kw) -> List[types.ColumnInfo]:
