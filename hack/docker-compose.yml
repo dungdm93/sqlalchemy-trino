@@ -1,0 +1,36 @@
+version: "3.7"
+
+services:
+  ##### MySQL #####
+  # https://hub.docker.com/_/mysql
+  # Help:
+  # > mysql -u root -p
+  mysql:
+    image: mysql:8.0
+    command: [--default-authentication-plugin=mysql_native_password]
+    environment:
+      MYSQL_ROOT_PASSWORD: SuperSecr3t
+    ports:
+    - 3306:3306
+    - 33060:33060
+    volumes:
+    - ./samples/mysql/:/docker-entrypoint-initdb.d/
+    - mysql_data:/var/lib/mysql
+
+  ##### PostgreSQL #####
+  # https://hub.docker.com/_/postgres
+  # Help:
+  # > psql -U postgres [-W]
+  postgres:
+    image: postgres:11-alpine
+    environment:
+      POSTGRES_PASSWORD: SuperSecr3t
+    ports:
+    - 5432:5432
+    volumes:
+    - ./samples/postgres/:/docker-entrypoint-initdb.d/
+    - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  mysql_data:
+  postgres_data:
