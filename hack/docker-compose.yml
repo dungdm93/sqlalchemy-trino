@@ -31,6 +31,18 @@ services:
     - ./samples/postgres/:/docker-entrypoint-initdb.d/
     - postgres_data:/var/lib/postgresql/data
 
+  ##### TrinoDB #####
+  # https://hub.docker.com/r/trinodb/trino
+  # Help:
+  # > trino --server=localhost:8080 [--catalog=mysql] [--schema=sakila]
+  trino:
+    image: trinodb/trino:351
+    ports:
+    - 8080:8080
+    volumes:
+    - ./catalogs/:/etc/trino/catalog/
+    - ./configs/:/etc/trino/
+
 volumes:
   mysql_data:
   postgres_data:
