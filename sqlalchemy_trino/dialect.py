@@ -126,6 +126,10 @@ class TrinoDialect(DefaultDialect):
     def _get_default_schema_name(self, connection: Connection):
         pass
 
+    def do_rollback(self, dbapi_connection):
+        if dbapi_connection.transaction is not None:
+            dbapi_connection.rollback()
+
     def do_begin_twophase(self, connection: Connection, xid):
         pass
 
