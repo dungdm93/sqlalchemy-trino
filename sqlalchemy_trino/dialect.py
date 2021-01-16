@@ -57,9 +57,13 @@ class TrinoDialect(DefaultDialect):
         else:
             raise ValueError(f'Unexpected database format {url.database}')
 
-        username = kwargs.pop('username', None)
+        username = kwargs.pop('username', 'anonymous')
+        kwargs['user'] = username
+
         password = kwargs.pop('password', None)
-        kwargs['auth'] = BasicAuthentication(username or 'anonymous', password)
+        if password:
+            kwargs['http_scheme'] = 'https'
+            kwargs['auth'] = BasicAuthentication(username, password)
 
         return args, kwargs
 
