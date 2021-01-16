@@ -2,6 +2,8 @@ from typing import *
 
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.default import DefaultDialect
+from sqlalchemy.engine.url import URL
+from trino.auth import BasicAuthentication
 
 from . import compiler
 from . import dbapi as trino_dbapi
@@ -42,6 +44,24 @@ class TrinoDialect(DefaultDialect):
         ref: https://www.python.org/dev/peps/pep-0249/#module-interface
         """
         return trino_dbapi
+
+    def create_connect_args(self, url: URL) -> Tuple[List[Any], Dict[str, Any]]:
+        args, kwargs = super(TrinoDialect, self).create_connect_args(url)  # type: List[Any], Dict[str, Any]
+
+        db_parts = kwargs.pop('database', 'hive').split('/')
+        if len(db_parts) == 1:
+            kwargs['catalog'] = db_parts[0]
+        elif len(db_parts) == 2:
+            kwargs['catalog'] = db_parts[0]
+            kwargs['schema'] = db_parts[1]
+        else:
+            raise ValueError(f'Unexpected database format {url.database}')
+
+        username = kwargs.pop('username', None)
+        password = kwargs.pop('password', None)
+        kwargs['auth'] = BasicAuthentication(username or 'anonymous', password)
+
+        return args, kwargs
 
     def get_columns(self, connection: Connection,
                     table_name: str, schema: str = None, **kw) -> List[types.ColumnInfo]:
