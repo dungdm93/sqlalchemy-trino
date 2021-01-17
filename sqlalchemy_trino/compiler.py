@@ -1,4 +1,4 @@
-from sqlalchemy.sql import compiler
+from sqlalchemy.sql import compiler, sqltypes
 
 # https://trino.io/docs/current/language/reserved.html
 RESERVED_WORDS = {
@@ -73,6 +73,54 @@ RESERVED_WORDS = {
     "when",
     "where",
     "with",
+}
+
+# https://trino.io/docs/current/language/types.html
+_type_map = {
+    # === Boolean ===
+    'boolean': sqltypes.BOOLEAN,
+
+    # === Integer ===
+    'tinyint': sqltypes.SMALLINT,
+    'smallint': sqltypes.SMALLINT,
+    'integer': sqltypes.INTEGER,
+    'bigint': sqltypes.BIGINT,
+
+    # === Floating-point ===
+    'real': sqltypes.FLOAT,
+    'double': sqltypes.FLOAT,
+
+    # === Fixed-precision ===
+    'decimal': sqltypes.DECIMAL,
+
+    # === String ===
+    'varchar': sqltypes.VARCHAR,
+    'char': sqltypes.CHAR,
+    'varbinary': sqltypes.VARBINARY,
+    'json': sqltypes.JSON,
+
+    # === Date and time ===
+    'date': sqltypes.DATE,
+    'time': sqltypes.Time,
+    'time with time zone': sqltypes.Time,
+    'timestamp': sqltypes.TIMESTAMP,
+    'timestamp with time zone': sqltypes.TIMESTAMP,
+
+    # 'interval year to month': IntervalOfYear,  # TODO
+    'interval day to second': sqltypes.Interval,
+
+    # === Structural ===
+    'array': sqltypes.ARRAY,
+    # 'map': MAP
+    # 'row': ROW
+
+    # === Mixed ===
+    # 'ipaddress': IPADDRESS
+    # 'uuid': UUID,
+    # 'hyperloglog': HYPERLOGLOG,
+    # 'p4hyperloglog': P4HYPERLOGLOG,
+    # 'qdigest': QDIGEST,
+    # 'tdigest': TDIGEST,
 }
 
 
