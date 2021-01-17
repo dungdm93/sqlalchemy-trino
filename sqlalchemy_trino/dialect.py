@@ -1,13 +1,30 @@
 from typing import *
 
 from sqlalchemy.engine.base import Connection
-from sqlalchemy.engine.default import DefaultDialect
+from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
 from sqlalchemy.engine.url import URL
 from trino.auth import BasicAuthentication
 
 from . import compiler
 from . import dbapi as trino_dbapi
+from . import result
 from . import types
+
+
+class TrinoExecutionContext(DefaultExecutionContext):
+    def get_result_proxy(self):
+        return result.TrinoResultProxy(self)
+
+    # all unimplemented stuffs
+
+    def create_server_side_cursor(self):
+        super(TrinoExecutionContext, self).create_server_side_cursor()
+
+    def result(self):
+        super(TrinoExecutionContext, self).result()
+
+    def get_rowcount(self):
+        super(TrinoExecutionContext, self).get_rowcount()
 
 
 class TrinoDialect(DefaultDialect):
@@ -15,6 +32,7 @@ class TrinoDialect(DefaultDialect):
     driver = 'rest'
     paramstyle = 'pyformat'  # trino.dbapi.paramstyle
 
+    execution_ctx_cls = TrinoExecutionContext
     statement_compiler = compiler.TrinoSQLCompiler
     ddl_compiler = compiler.TrinoDDLCompiler
     type_compiler = compiler.TrinoTypeCompiler
