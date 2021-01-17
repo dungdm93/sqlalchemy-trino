@@ -1,5 +1,6 @@
 from typing import *
 
+from sqlalchemy import exc, sql, util
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
 from sqlalchemy.engine.url import URL
@@ -7,6 +8,7 @@ from trino.auth import BasicAuthentication
 
 from . import compiler
 from . import dbapi as trino_dbapi
+from . import error
 from . import result
 from . import types
 
@@ -87,7 +89,27 @@ class TrinoDialect(DefaultDialect):
 
     def get_columns(self, connection: Connection,
                     table_name: str, schema: str = None, **kw) -> List[types.ColumnInfo]:
-        pass
+        full_table = self._get_full_table(table_name, schema)
+        try:
+            rows = self._get_table_columns(connection, full_table)
+            columns = []
+            for row in rows:
+                if row.Type in compiler._type_map:
+                    coltype = compiler._type_map[row.Type]
+                else:
+                    util.warn("Did not recognize type '%s' of column '%s'" % (row.Type, row.Column))
+                    coltype = ""
+                columns.append(types.ColumnInfo(
+                    name=row.Column,
+                    type=coltype,
+                    nullable=getattr(row, 'Null', True),
+                    default=None,
+                ))
+            return columns
+        except error.TrinoQueryError as e:
+            if e.error_name in (error.TABLE_NOT_FOUND, error.SCHEMA_NOT_FOUND, error.CATALOG_NOT_FOUND):
+                raise exc.NoSuchTableError(full_table) from e
+            raise
 
     def get_pk_constraint(self, connection: Connection,
                           table_name: str, schema: str = None, **kw) -> types.PrimaryKeyInfo:
@@ -170,3 +192,15 @@ class TrinoDialect(DefaultDialect):
 
     def get_isolation_level(self, dbapi_conn):
         pass
+
+    @staticmethod
+    def _get_table_columns(connection: Connection, full_table: str):
+        stmt = sql.text(f'SHOW COLUMNS FROM {full_table}')
+        return connection.execute(stmt)
+
+    def _get_full_table(self, table_name: str, schema: str = None):
+        full_table = self.identifier_preparer.quote_identifier(table_name)
+        if schema:
+            full_table = self.identifier_preparer.quote_identifier(schema) + '.' + full_table
+
+        return full_table
