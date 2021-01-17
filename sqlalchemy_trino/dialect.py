@@ -149,7 +149,17 @@ class TrinoDialect(DefaultDialect):
 
     def has_table(self, connection: Connection,
                   table_name: str, schema: str = None) -> bool:
-        pass
+        query = "SHOW TABLES"
+        if schema:
+            query = f"{query} FROM {self.identifier_preparer.quote_identifier(schema)}"
+        query = f"{query} LIKE '{table_name}'"
+        try:
+            res = connection.execute(sql.text(query))
+            return res.first() is not None
+        except error.TrinoQueryError as e:
+            if e.error_name in (error.TABLE_NOT_FOUND, error.SCHEMA_NOT_FOUND, error.CATALOG_NOT_FOUND):
+                return False
+            raise
 
     def has_sequence(self, connection: Connection,
                      sequence_name: str, schema: str = None) -> bool:
@@ -193,9 +203,10 @@ class TrinoDialect(DefaultDialect):
         stmt = sql.text(f'SHOW COLUMNS FROM {full_table}')
         return connection.execute(stmt)
 
-    def _get_full_table(self, table_name: str, schema: str = None):
-        full_table = self.identifier_preparer.quote_identifier(table_name)
+    def _get_full_table(self, table_name: str, schema: str = None, quote: bool = True):
+        table_part = self.identifier_preparer.quote_identifier(table_name) if quote else table_name
         if schema:
-            full_table = self.identifier_preparer.quote_identifier(schema) + '.' + full_table
+            schema_part = self.identifier_preparer.quote_identifier(schema) if quote else schema
+            return f'{schema_part}.{table_part}'
 
-        return full_table
+        return table_part
