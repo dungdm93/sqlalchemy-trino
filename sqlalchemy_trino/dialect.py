@@ -1,6 +1,6 @@
 from typing import *
 
-from sqlalchemy import exc, sql, util
+from sqlalchemy import exc, sql
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
 from sqlalchemy.engine.url import URL
@@ -94,14 +94,9 @@ class TrinoDialect(DefaultDialect):
             rows = self._get_table_columns(connection, full_table)
             columns = []
             for row in rows:
-                if row.Type in compiler._type_map:
-                    coltype = compiler._type_map[row.Type]
-                else:
-                    util.warn("Did not recognize type '%s' of column '%s'" % (row.Type, row.Column))
-                    coltype = ""
                 columns.append(types.ColumnInfo(
                     name=row.Column,
-                    type=coltype,
+                    type=compiler.parse_sqltype(row.Type, row.Column),
                     nullable=getattr(row, 'Null', True),
                     default=None,
                 ))
