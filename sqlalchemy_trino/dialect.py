@@ -117,7 +117,11 @@ class TrinoDialect(DefaultDialect):
         pass
 
     def get_table_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
-        pass
+        query = "SHOW TABLES"
+        if schema:
+            query = f"{query} FROM {self.identifier_preparer.quote_identifier(schema)}"
+        res = connection.execute(sql.text(query))
+        return [row.Table for row in res]
 
     def get_temp_table_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
         pass
