@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  Documentations:
+  * https://cwiki.apache.org/confluence/display/Hive/Configuration+Properties
+  * https://cwiki.apache.org/confluence/display/Hive/AdminManual+Metastore+Administration
+  * https://cwiki.apache.org/confluence/display/Hive/AdminManual+Metastore+3.0+Administration
+-->
+<configuration>
+  <property>
+    <name>hive.metastore.db.type</name>
+    <value>postgres</value>
+  </property>
+
+  <property>
+    <name>javax.jdo.option.ConnectionURL</name>
+    <value>jdbc:postgresql://postgres:5432/postgres</value>
+  </property>
+
+  <property>
+    <name>javax.jdo.option.ConnectionDriverName</name>
+    <value>org.postgresql.Driver</value>
+  </property>
+
+  <property>
+    <name>javax.jdo.option.ConnectionUserName</name>
+    <value>postgres</value>
+  </property>
+
+  <property>
+    <name>javax.jdo.option.ConnectionPassword</name>
+    <value>SuperSecr3t</value>
+  </property>
+
+  <property>
+    <name>hive.metastore.schema.verification</name>
+    <value>true</value>
+  </property>
+
+  <property>
+    <name>hive.metastore.warehouse.dir</name>
+    <value>file:///data/warehouse/</value>
+  </property>
+
+  <property>
+    <name>hive.metastore.uris</name>
+    <value>thrift://hive-metastore:9083</value>
+  </property>
+
+  <property>
+    <name>hive.metastore.event.db.notification.api.auth</name>
+    <value>false</value>
+  </property>
+
+  <property>
+    <name>hive.default.fileformat</name>
+    <value>parquet</value>
+  </property>
+</configuration>

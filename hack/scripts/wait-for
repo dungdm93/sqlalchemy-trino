@@ -1,0 +1,22 @@
+#!/bin/bash
+: ${NRETRY:=30}
+host=$1
+port=$2
+
+if ! command -v nc >/dev/null 2>&1; then
+    echo >&2 "[$(date -Iseconds)] nc command not found"
+    exit 1
+fi
+
+i=0
+while ! nc -z "$host" "$port" >/dev/null 2>&1; do
+    ((i+=1))
+
+    if [ $i -ge $NRETRY ]; then
+        echo >&2 "[$(date -Iseconds)] $host:$port still not reachable, giving up"
+        exit 1
+    fi
+
+    echo "[$(date -Iseconds)] waiting for $host:$port... $i/$NRETRY"
+    sleep 3
+done

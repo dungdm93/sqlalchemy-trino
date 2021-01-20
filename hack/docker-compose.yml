@@ -31,6 +31,38 @@ services:
     - ./samples/postgres/:/docker-entrypoint-initdb.d/
     - postgres_data:/var/lib/postgresql/data
 
+  hive-metastore:
+    image: hub.teko.vn/data/hive:3.1.2-hadoop-3.1.0
+    # HOTFIX: Illegal character in hostname at index 13: thrift://hive_hive-metastore_1.bookshelf:9083
+    # Caused at org.apache.hadoop.hive.metastore.HiveMetaStoreClient.resolveUris(HiveMetaStoreClient.java:267)
+    container_name: hive-metastore
+    entrypoint: ["/usr/local/scripts/metastore-entrypoint.sh"]
+    depends_on:
+    - postgres
+    environment:
+      HADOOP_OPTIONAL_TOOLS: hadoop-aws
+    ports:
+    - 9083:9083
+    volumes:
+    - ./scripts/:/usr/local/scripts/
+    - ./configs/hive/:/opt/hive/conf/
+    - warehouse_data:/data/warehouse
+
+  hive-server2:
+    image: hub.teko.vn/data/hive:3.1.2-hadoop-3.1.0
+    entrypoint: ["/usr/local/scripts/hiveserver2-entrypoint.sh"]
+    depends_on:
+    - hive-metastore
+    environment:
+      HADOOP_OPTIONAL_TOOLS: hadoop-aws
+    ports:
+    - 10000:10000
+    - 10002:10002 # WebUI
+    volumes:
+    - ./scripts/:/usr/local/scripts/
+    - ./configs/hive/:/opt/hive/conf/
+    - warehouse_data:/data/warehouse
+
   ##### TrinoDB #####
   # https://hub.docker.com/r/trinodb/trino
   # Help:
@@ -46,3 +78,8 @@ services:
 volumes:
   mysql_data:
   postgres_data:
+  warehouse_data:
+
+networks:
+  default:
+    name: bookshelf
