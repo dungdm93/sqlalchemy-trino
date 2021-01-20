@@ -41,7 +41,7 @@ services:
     - 8080:8080
     volumes:
     - ./catalogs/:/etc/trino/catalog/
-    - ./configs/:/etc/trino/
+    - ./configs/trino/:/etc/trino/
 
 volumes:
   mysql_data:
