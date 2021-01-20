@@ -74,6 +74,7 @@ services:
     volumes:
     - ./catalogs/:/etc/trino/catalog/
     - ./configs/trino/:/etc/trino/
+    - warehouse_data:/data/warehouse
 
 volumes:
   mysql_data:
