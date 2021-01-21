@@ -244,11 +244,16 @@ class TrinoDialect(DefaultDialect):
     def do_recover_twophase(self, connection: Connection) -> None:
         pass
 
-    def set_isolation_level(self, dbapi_conn, level):
-        pass
+    def set_isolation_level(self, dbapi_conn: trino_dbapi.Connection, level):
+        dbapi_conn._isolation_level = getattr(trino_dbapi.IsolationLevel, level)
 
-    def get_isolation_level(self, dbapi_conn):
-        pass
+    def get_isolation_level(self, dbapi_conn: trino_dbapi.Connection) -> str:
+        level_names = ["AUTOCOMMIT",
+                       "READ_UNCOMMITTED",
+                       "READ_COMMITTED",
+                       "REPEATABLE_READ",
+                       "SERIALIZABLE"]
+        return level_names[dbapi_conn.isolation_level]
 
     @staticmethod
     def _get_table_columns(connection: Connection, full_table: str):

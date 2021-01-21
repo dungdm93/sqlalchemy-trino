@@ -25,3 +25,8 @@ from trino.exceptions import (  # noqa
     ProgrammingError,
     NotSupportedError,
 )
+
+from trino.transaction import (  # noqa
+    Transaction,
+    IsolationLevel
+)
