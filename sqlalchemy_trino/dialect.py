@@ -128,7 +128,16 @@ class TrinoDialect(DefaultDialect):
         pass
 
     def get_view_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
-        pass
+        schema = schema or self._get_default_schema_name(connection)
+        if schema is None:
+            raise exc.NoSuchTableError("schema is required")
+        query = dedent("""
+            SELECT "table_name"
+            FROM "information_schema"."views"
+            WHERE "table_schema" = :schema
+        """).strip()
+        res = connection.execute(sql.text(query), schema=schema)
+        return [row.table_name for row in res]
 
     def get_temp_view_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
         pass
