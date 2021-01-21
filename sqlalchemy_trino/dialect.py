@@ -119,6 +119,11 @@ class TrinoDialect(DefaultDialect):
         """Trino has no support for foreign keys. Returns an empty list."""
         return []
 
+    def get_schema_names(self, connection: Connection, **kw):
+        query = "SHOW SCHEMAS"
+        res = connection.execute(sql.text(query))
+        return [row.Schema for row in res]
+
     def get_table_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
         query = "SHOW TABLES"
         if schema:
@@ -174,6 +179,16 @@ class TrinoDialect(DefaultDialect):
     def get_table_comment(self, connection: Connection,
                           table_name: str, schema: str = None, **kw) -> str:
         pass
+
+    def has_schema(self, connection: Connection, schema: str) -> bool:
+        query = f"SHOW SCHEMAS LIKE '{schema}'"
+        try:
+            res = connection.execute(sql.text(query))
+            return res.first() is not None
+        except error.TrinoQueryError as e:
+            if e.error_name in (error.TABLE_NOT_FOUND, error.SCHEMA_NOT_FOUND, error.CATALOG_NOT_FOUND):
+                return False
+            raise
 
     def has_table(self, connection: Connection,
                   table_name: str, schema: str = None) -> bool:
