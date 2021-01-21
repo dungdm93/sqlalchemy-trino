@@ -143,7 +143,15 @@ class TrinoDialect(DefaultDialect):
         pass
 
     def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw):
-        pass
+        full_view = self._get_full_table(view_name, schema)
+        query = f"SHOW CREATE VIEW {full_view}"
+        try:
+            res = connection.execute(sql.text(query))
+            return res.first()[0]
+        except error.TrinoQueryError as e:
+            if e.error_name in (error.TABLE_NOT_FOUND, error.SCHEMA_NOT_FOUND, error.CATALOG_NOT_FOUND):
+                raise exc.NoSuchTableError(full_view) from e
+            raise
 
     def get_indexes(self, connection: Connection,
                     table_name: str, schema: str = None, **kw) -> List[types.IndexInfo]:
