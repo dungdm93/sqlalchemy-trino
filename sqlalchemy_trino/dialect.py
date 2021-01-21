@@ -1,3 +1,4 @@
+from textwrap import dedent
 from typing import *
 
 from sqlalchemy import exc, sql
@@ -170,7 +171,14 @@ class TrinoDialect(DefaultDialect):
         pass
 
     def _get_server_version_info(self, connection: Connection):
-        pass
+        query = dedent("""
+            SELECT *
+            FROM system.runtime.nodes
+            WHERE coordinator = true AND state = 'active'
+        """).strip()
+        res = connection.execute(sql.text(query)).first()
+        version = int(res.node_version)
+        return tuple([version])
 
     def _get_default_schema_name(self, connection: Connection):
         pass
