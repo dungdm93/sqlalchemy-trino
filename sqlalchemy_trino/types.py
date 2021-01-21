@@ -1,4 +1,4 @@
-from typing import Any, List, TypedDict
+from typing import *
 
 from sqlalchemy.sql.type_api import TypeEngine
 
@@ -26,7 +26,7 @@ class ColumnInfo(TypedDict, total=False):
 
 
 class PrimaryKeyInfo(TypedDict, total=False):
-    name: str
+    name: Optional[str]
     constrained_columns: List[str]
 
 

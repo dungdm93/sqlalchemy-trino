@@ -109,13 +109,15 @@ class TrinoDialect(DefaultDialect):
 
     def get_pk_constraint(self, connection: Connection,
                           table_name: str, schema: str = None, **kw) -> types.PrimaryKeyInfo:
-        pass
+        """Trino has no support for primary keys. Returns a dummy"""
+        return types.PrimaryKeyInfo(name=None, constrained_columns=[])
 
     get_primary_keys = get_pk_constraint
 
     def get_foreign_keys(self, connection: Connection,
                          table_name: str, schema: str = None, **kw) -> List[types.ForeignKeyInfo]:
-        pass
+        """Trino has no support for foreign keys. Returns an empty list."""
+        return []
 
     def get_table_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
         query = "SHOW TABLES"
@@ -125,7 +127,8 @@ class TrinoDialect(DefaultDialect):
         return [row.Table for row in res]
 
     def get_temp_table_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
-        pass
+        """Trino has no support for temporary tables. Returns an empty list."""
+        return []
 
     def get_view_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
         schema = schema or self._get_default_schema_name(connection)
@@ -140,7 +143,8 @@ class TrinoDialect(DefaultDialect):
         return [row.table_name for row in res]
 
     def get_temp_view_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
-        pass
+        """Trino has no support for temporary views. Returns an empty list."""
+        return []
 
     def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw):
         full_view = self._get_full_table(view_name, schema)
@@ -159,11 +163,13 @@ class TrinoDialect(DefaultDialect):
 
     def get_unique_constraints(self, connection: Connection,
                                table_name: str, schema: str = None, **kw) -> List[types.UniqueConstraintInfo]:
-        pass
+        """Trino has no support for unique constraints. Returns an empty list."""
+        return []
 
     def get_check_constraints(self, connection: Connection,
                               table_name: str, schema: str = None, **kw) -> List[types.CheckConstraintInfo]:
-        pass
+        """Trino has no support for check constraints. Returns an empty list."""
+        return []
 
     def get_table_comment(self, connection: Connection,
                           table_name: str, schema: str = None, **kw) -> str:
@@ -185,7 +191,8 @@ class TrinoDialect(DefaultDialect):
 
     def has_sequence(self, connection: Connection,
                      sequence_name: str, schema: str = None) -> bool:
-        pass
+        """Trino has no support for sequence. Returns False indicate that given sequence does not exists."""
+        return False
 
     def _get_server_version_info(self, connection: Connection):
         query = dedent("""
