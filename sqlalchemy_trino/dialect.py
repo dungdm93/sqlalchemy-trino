@@ -181,7 +181,8 @@ class TrinoDialect(DefaultDialect):
         return tuple([version])
 
     def _get_default_schema_name(self, connection: Connection):
-        pass
+        dbapi_connection: trino_dbapi.Connection = connection.connection
+        return dbapi_connection.schema
 
     def do_rollback(self, dbapi_connection):
         if dbapi_connection.transaction is not None:
