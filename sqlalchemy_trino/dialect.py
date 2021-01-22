@@ -97,7 +97,7 @@ class TrinoDialect(DefaultDialect):
             for row in rows:
                 columns.append(dict(
                     name=row.Column,
-                    type=datatype.parse_sqltype(row.Type, row.Column),
+                    type=datatype.parse_sqltype(row.Type),
                     nullable=getattr(row, 'Null', True),
                     default=None,
                 ))
