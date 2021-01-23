@@ -11,7 +11,6 @@ from . import compiler
 from . import dbapi as trino_dbapi
 from . import error
 from . import result
-from . import types
 
 
 class TrinoExecutionContext(DefaultExecutionContext):
@@ -89,13 +88,13 @@ class TrinoDialect(DefaultDialect):
         return args, kwargs
 
     def get_columns(self, connection: Connection,
-                    table_name: str, schema: str = None, **kw) -> List[types.ColumnInfo]:
+                    table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
         full_table = self._get_full_table(table_name, schema)
         try:
             rows = self._get_table_columns(connection, full_table)
             columns = []
             for row in rows:
-                columns.append(types.ColumnInfo(
+                columns.append(dict(
                     name=row.Column,
                     type=compiler.parse_sqltype(row.Type, row.Column),
                     nullable=getattr(row, 'Null', True),
@@ -108,18 +107,18 @@ class TrinoDialect(DefaultDialect):
             raise
 
     def get_pk_constraint(self, connection: Connection,
-                          table_name: str, schema: str = None, **kw) -> types.PrimaryKeyInfo:
+                          table_name: str, schema: str = None, **kw) -> Dict[str, Any]:
         """Trino has no support for primary keys. Returns a dummy"""
-        return types.PrimaryKeyInfo(name=None, constrained_columns=[])
+        return dict(name=None, constrained_columns=[])
 
     get_primary_keys = get_pk_constraint
 
     def get_foreign_keys(self, connection: Connection,
-                         table_name: str, schema: str = None, **kw) -> List[types.ForeignKeyInfo]:
+                         table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
         """Trino has no support for foreign keys. Returns an empty list."""
         return []
 
-    def get_schema_names(self, connection: Connection, **kw):
+    def get_schema_names(self, connection: Connection, **kw) -> List[str]:
         query = "SHOW SCHEMAS"
         res = connection.execute(sql.text(query))
         return [row.Schema for row in res]
@@ -151,7 +150,7 @@ class TrinoDialect(DefaultDialect):
         """Trino has no support for temporary views. Returns an empty list."""
         return []
 
-    def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw):
+    def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw) -> str:
         full_view = self._get_full_table(view_name, schema)
         query = f"SHOW CREATE VIEW {full_view}"
         try:
@@ -163,16 +162,16 @@ class TrinoDialect(DefaultDialect):
             raise
 
     def get_indexes(self, connection: Connection,
-                    table_name: str, schema: str = None, **kw) -> List[types.IndexInfo]:
+                    table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
         pass
 
     def get_unique_constraints(self, connection: Connection,
-                               table_name: str, schema: str = None, **kw) -> List[types.UniqueConstraintInfo]:
+                               table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
         """Trino has no support for unique constraints. Returns an empty list."""
         return []
 
     def get_check_constraints(self, connection: Connection,
-                              table_name: str, schema: str = None, **kw) -> List[types.CheckConstraintInfo]:
+                              table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
         """Trino has no support for check constraints. Returns an empty list."""
         return []
 
@@ -209,7 +208,7 @@ class TrinoDialect(DefaultDialect):
         """Trino has no support for sequence. Returns False indicate that given sequence does not exists."""
         return False
 
-    def _get_server_version_info(self, connection: Connection):
+    def _get_server_version_info(self, connection: Connection) -> Tuple[int, ...]:
         query = dedent("""
             SELECT *
             FROM system.runtime.nodes
@@ -219,7 +218,7 @@ class TrinoDialect(DefaultDialect):
         version = int(res.node_version)
         return tuple([version])
 
-    def _get_default_schema_name(self, connection: Connection):
+    def _get_default_schema_name(self, connection: Connection) -> Optional[str]:
         dbapi_connection: trino_dbapi.Connection = connection.connection
         return dbapi_connection.schema
 
@@ -244,7 +243,7 @@ class TrinoDialect(DefaultDialect):
     def do_recover_twophase(self, connection: Connection) -> None:
         pass
 
-    def set_isolation_level(self, dbapi_conn: trino_dbapi.Connection, level):
+    def set_isolation_level(self, dbapi_conn: trino_dbapi.Connection, level) -> None:
         dbapi_conn._isolation_level = getattr(trino_dbapi.IsolationLevel, level)
 
     def get_isolation_level(self, dbapi_conn: trino_dbapi.Connection) -> str:
@@ -260,7 +259,7 @@ class TrinoDialect(DefaultDialect):
         stmt = sql.text(f'SHOW COLUMNS FROM {full_table}')
         return connection.execute(stmt)
 
-    def _get_full_table(self, table_name: str, schema: str = None, quote: bool = True):
+    def _get_full_table(self, table_name: str, schema: str = None, quote: bool = True) -> str:
         table_part = self.identifier_preparer.quote_identifier(table_name) if quote else table_name
         if schema:
             schema_part = self.identifier_preparer.quote_identifier(schema) if quote else schema
