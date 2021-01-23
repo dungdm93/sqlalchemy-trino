@@ -8,6 +8,7 @@ from sqlalchemy.engine.url import URL
 from trino.auth import BasicAuthentication
 
 from . import compiler
+from . import datatype
 from . import dbapi as trino_dbapi
 from . import error
 from . import result
@@ -96,7 +97,7 @@ class TrinoDialect(DefaultDialect):
             for row in rows:
                 columns.append(dict(
                     name=row.Column,
-                    type=compiler.parse_sqltype(row.Type, row.Column),
+                    type=datatype.parse_sqltype(row.Type, row.Column),
                     nullable=getattr(row, 'Null', True),
                     default=None,
                 ))
