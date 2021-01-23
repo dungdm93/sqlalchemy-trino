@@ -2,6 +2,8 @@ sqlalchemy-trino
 ================
 _[Trino](https://trino.io/) (f.k.a PrestoSQL) dialect for SQLAlchemy._
 
+> !!! WARNING !!! This project is still alpha and under active development.
+
 The primary purpose of this is provide a dialect for Trino that can be used with [Apache Superset](https://superset.apache.org/).
 But other use-cases should works as well.
 
