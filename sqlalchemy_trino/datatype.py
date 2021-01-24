@@ -31,19 +31,17 @@ _type_map = {
 
     # === Date and time ===
     'date': sqltypes.DATE,
-    'time': sqltypes.Time,
-    'time with time zone': sqltypes.Time,
+    'time': sqltypes.TIME,
     'timestamp': sqltypes.TIMESTAMP,
-    'timestamp with time zone': sqltypes.TIMESTAMP,
 
-    # 'interval year to month': IntervalOfYear,  # TODO
-    'interval day to second': sqltypes.Interval,
-
+    # 'interval year to month':
+    # 'interval day to second':
+    #
     # === Structural ===
-    'array': sqltypes.ARRAY,
-    # 'map': MAP
-    # 'row': ROW
-
+    # 'array': ARRAY,
+    # 'map':   MAP
+    # 'row':   ROW
+    #
     # === Mixed ===
     # 'ipaddress': IPADDRESS
     # 'uuid': UUID,
@@ -53,13 +51,39 @@ _type_map = {
     # 'tdigest': TDIGEST,
 }
 
+SQLType = Union[TypeEngine, Type[TypeEngine]]
+
 
 class MAP(TypeEngine):
-    pass
+    __visit_name__ = "MAP"
+
+    def __init__(self, key_type: SQLType, value_type: SQLType):
+        if isinstance(key_type, type):
+            key_type = key_type()
+        self.key_type: TypeEngine = key_type
+
+        if isinstance(value_type, type):
+            value_type = value_type()
+        self.value_type: TypeEngine = value_type
+
+    @property
+    def python_type(self):
+        return dict
 
 
 class ROW(TypeEngine):
-    pass
+    __visit_name__ = "ROW"
+
+    def __init__(self, attr_types: Dict[str, SQLType]):
+        for name, attr_type in attr_types.items():
+            if isinstance(attr_type, type):
+                attr_type = attr_type()
+                attr_types[name] = attr_type
+        self.attr_types: Dict[str, TypeEngine] = attr_types
+
+    @property
+    def python_type(self):
+        return dict
 
 
 def split(string: str, delimiter: str = ',',
@@ -106,6 +130,9 @@ def parse_sqltype(type_str: str) -> TypeEngine:
 
     if type_name == "array":
         item_type = parse_sqltype(type_opts)
+        if isinstance(item_type, sqltypes.ARRAY):
+            dimensions = (item_type.dimensions or 1) + 1
+            return sqltypes.ARRAY(item_type.item_type, dimensions=dimensions)
         return sqltypes.ARRAY(item_type)
     elif type_name == "map":
         key_type_str, value_type_str = split(type_opts)
@@ -113,8 +140,12 @@ def parse_sqltype(type_str: str) -> TypeEngine:
         value_type = parse_sqltype(value_type_str)
         return MAP(key_type, value_type)
     elif type_name == "row":
-        attr_types = split(type_opts)
-        return ROW()  # TODO
+        attr_types: Dict[str, SQLType] = {}
+        for attr_str in split(type_opts):
+            name, attr_type_str = split(attr_str.strip(), delimiter=' ')
+            attr_type = parse_sqltype(attr_type_str)
+            attr_types[name] = attr_type
+        return ROW(attr_types)
 
     if type_name not in _type_map:
         util.warn(f"Did not recognize type '{type_name}'")
