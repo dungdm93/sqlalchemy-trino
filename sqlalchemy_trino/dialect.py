@@ -90,22 +90,30 @@ class TrinoDialect(DefaultDialect):
 
     def get_columns(self, connection: Connection,
                     table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
-        full_table = self._get_full_table(table_name, schema)
-        try:
-            rows = self._get_table_columns(connection, full_table)
-            columns = []
-            for row in rows:
-                columns.append(dict(
-                    name=row.Column,
-                    type=datatype.parse_sqltype(row.Type),
-                    nullable=getattr(row, 'Null', True),
-                    default=None,
-                ))
-            return columns
-        except error.TrinoQueryError as e:
-            if e.error_name in (error.TABLE_NOT_FOUND, error.SCHEMA_NOT_FOUND, error.CATALOG_NOT_FOUND):
-                raise exc.NoSuchTableError(full_table) from e
-            raise
+        if not self.has_table(connection, table_name, schema):
+            raise exc.NoSuchTableError(f"schema={schema}, table={table_name}")
+        schema = schema or self._get_default_schema_name(connection)
+        query = dedent("""
+            SELECT
+                "column_name",
+                "column_default",
+                "is_nullable",
+                "data_type"
+            FROM "information_schema"."columns"
+            WHERE "table_schema" = :schema AND "table_name" = :table
+            ORDER BY "ordinal_position" ASC
+        """).strip()
+        res = connection.execute(sql.text(query), schema=schema, table=table_name)
+        columns = []
+        for record in res:
+            column = dict(
+                name=record.column_name,
+                type=datatype.parse_sqltype(record.data_type),
+                nullable=(record.is_nullable or '').upper() == 'YES',
+                default=record.column_default,
+            )
+            columns.append(column)
+        return columns
 
     def get_pk_constraint(self, connection: Connection,
                           table_name: str, schema: str = None, **kw) -> Dict[str, Any]:
@@ -158,7 +166,11 @@ class TrinoDialect(DefaultDialect):
             res = connection.execute(sql.text(query))
             return res.first()[0]
         except error.TrinoQueryError as e:
-            if e.error_name in (error.TABLE_NOT_FOUND, error.SCHEMA_NOT_FOUND, error.CATALOG_NOT_FOUND):
+            if e.error_name in (
+                error.TABLE_NOT_FOUND,
+                error.SCHEMA_NOT_FOUND,
+                error.CATALOG_NOT_FOUND,
+            ):
                 raise exc.NoSuchTableError(full_view) from e
             raise
 
@@ -186,7 +198,11 @@ class TrinoDialect(DefaultDialect):
             res = connection.execute(sql.text(query))
             return res.first() is not None
         except error.TrinoQueryError as e:
-            if e.error_name in (error.TABLE_NOT_FOUND, error.SCHEMA_NOT_FOUND, error.CATALOG_NOT_FOUND):
+            if e.error_name in (
+                error.TABLE_NOT_FOUND,
+                error.SCHEMA_NOT_FOUND,
+                error.CATALOG_NOT_FOUND,
+            ):
                 return False
             raise
 
@@ -200,7 +216,12 @@ class TrinoDialect(DefaultDialect):
             res = connection.execute(sql.text(query))
             return res.first() is not None
         except error.TrinoQueryError as e:
-            if e.error_name in (error.TABLE_NOT_FOUND, error.SCHEMA_NOT_FOUND, error.CATALOG_NOT_FOUND):
+            if e.error_name in (
+                error.TABLE_NOT_FOUND,
+                error.SCHEMA_NOT_FOUND,
+                error.CATALOG_NOT_FOUND,
+                error.MISSING_SCHEMA_NAME,
+            ):
                 return False
             raise
 
@@ -254,11 +275,6 @@ class TrinoDialect(DefaultDialect):
                        "REPEATABLE_READ",
                        "SERIALIZABLE"]
         return level_names[dbapi_conn.isolation_level]
-
-    @staticmethod
-    def _get_table_columns(connection: Connection, full_table: str):
-        stmt = sql.text(f'SHOW COLUMNS FROM {full_table}')
-        return connection.execute(stmt)
 
     def _get_full_table(self, table_name: str, schema: str = None, quote: bool = True) -> str:
         table_part = self.identifier_preparer.quote_identifier(table_name) if quote else table_name
