@@ -3,6 +3,8 @@ from trino.exceptions import (  # noqa
 )
 
 # ref: https://github.com/trinodb/trino/blob/master/core/trino-spi/src/main/java/io/trino/spi/StandardErrorCode.java
+NOT_FOUND = 'NOT_FOUND'
+COLUMN_NOT_FOUND = 'COLUMN_NOT_FOUND'
 TABLE_NOT_FOUND = 'TABLE_NOT_FOUND'
 SCHEMA_NOT_FOUND = 'SCHEMA_NOT_FOUND'
 CATALOG_NOT_FOUND = 'CATALOG_NOT_FOUND'

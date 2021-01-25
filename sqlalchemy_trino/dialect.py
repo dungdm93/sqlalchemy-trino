@@ -170,7 +170,7 @@ class TrinoDialect(DefaultDialect):
         query = f'SHOW CREATE VIEW {full_view}'
         try:
             res = connection.execute(sql.text(query))
-            return res.first()[0]
+            return res.scalar()
         except error.TrinoQueryError as e:
             if e.error_name in (
                 error.TABLE_NOT_FOUND,
@@ -204,8 +204,20 @@ class TrinoDialect(DefaultDialect):
         return []
 
     def get_table_comment(self, connection: Connection,
-                          table_name: str, schema: str = None, **kw) -> str:
-        pass
+                          table_name: str, schema: str = None, **kw) -> Dict[str, Any]:
+        properties_table = self._get_full_table(f"{table_name}$properties", schema)
+        query = f'SELECT "comment" FROM {properties_table}'
+        try:
+            res = connection.execute(sql.text(query))
+            return dict(text=res.scalar())
+        except error.TrinoQueryError as e:
+            if e.error_name in (
+                error.NOT_FOUND,
+                error.COLUMN_NOT_FOUND,
+                error.TABLE_NOT_FOUND,
+            ):
+                return dict(text=None)
+            raise
 
     def has_schema(self, connection: Connection, schema: str) -> bool:
         query = f"SHOW SCHEMAS LIKE '{schema}'"
