@@ -33,7 +33,6 @@ class TrinoExecutionContext(DefaultExecutionContext):
 class TrinoDialect(DefaultDialect):
     name = 'trino'
     driver = 'rest'
-    paramstyle = 'pyformat'  # trino.dbapi.paramstyle
 
     execution_ctx_cls = TrinoExecutionContext
     statement_compiler = compiler.TrinoSQLCompiler
@@ -47,7 +46,7 @@ class TrinoDialect(DefaultDialect):
     supports_native_decimal = True
 
     # Column options
-    supports_sequences = False  # TODO: check
+    supports_sequences = False
     supports_comments = True
     inline_comments = True
     supports_default_values = False
@@ -56,7 +55,7 @@ class TrinoDialect(DefaultDialect):
     supports_alter = True
 
     # DML
-    supports_empty_insert = False  # TODO: check
+    supports_empty_insert = False
     supports_multivalues_insert = True
 
     @classmethod
@@ -91,13 +90,13 @@ class TrinoDialect(DefaultDialect):
     def get_columns(self, connection: Connection,
                     table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
         if not self.has_table(connection, table_name, schema):
-            raise exc.NoSuchTableError(f"schema={schema}, table={table_name}")
+            raise exc.NoSuchTableError(f'schema={schema}, table={table_name}')
         return self._get_columns(connection, table_name, schema, **kw)
 
     def _get_columns(self, connection: Connection,
                      table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
         schema = schema or self._get_default_schema_name(connection)
-        query = dedent("""
+        query = dedent('''
             SELECT
                 "column_name",
                 "column_default",
@@ -106,7 +105,7 @@ class TrinoDialect(DefaultDialect):
             FROM "information_schema"."columns"
             WHERE "table_schema" = :schema AND "table_name" = :table
             ORDER BY "ordinal_position" ASC
-        """).strip()
+        ''').strip()
         res = connection.execute(sql.text(query), schema=schema, table=table_name)
         columns = []
         for record in res:
@@ -135,14 +134,14 @@ class TrinoDialect(DefaultDialect):
         return []
 
     def get_schema_names(self, connection: Connection, **kw) -> List[str]:
-        query = "SHOW SCHEMAS"
+        query = 'SHOW SCHEMAS'
         res = connection.execute(sql.text(query))
         return [row.Schema for row in res]
 
     def get_table_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
-        query = "SHOW TABLES"
+        query = 'SHOW TABLES'
         if schema:
-            query = f"{query} FROM {self.identifier_preparer.quote_identifier(schema)}"
+            query = f'{query} FROM {self.identifier_preparer.quote_identifier(schema)}'
         res = connection.execute(sql.text(query))
         return [row.Table for row in res]
 
@@ -153,12 +152,12 @@ class TrinoDialect(DefaultDialect):
     def get_view_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
         schema = schema or self._get_default_schema_name(connection)
         if schema is None:
-            raise exc.NoSuchTableError("schema is required")
-        query = dedent("""
+            raise exc.NoSuchTableError('schema is required')
+        query = dedent('''
             SELECT "table_name"
             FROM "information_schema"."views"
             WHERE "table_schema" = :schema
-        """).strip()
+        ''').strip()
         res = connection.execute(sql.text(query), schema=schema)
         return [row.table_name for row in res]
 
@@ -168,7 +167,7 @@ class TrinoDialect(DefaultDialect):
 
     def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw) -> str:
         full_view = self._get_full_table(view_name, schema)
-        query = f"SHOW CREATE VIEW {full_view}"
+        query = f'SHOW CREATE VIEW {full_view}'
         try:
             res = connection.execute(sql.text(query))
             return res.first()[0]
@@ -184,11 +183,11 @@ class TrinoDialect(DefaultDialect):
     def get_indexes(self, connection: Connection,
                     table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
         if not self.has_table(connection, table_name, schema):
-            raise exc.NoSuchTableError(f"schema={schema}, table={table_name}")
+            raise exc.NoSuchTableError(f'schema={schema}, table={table_name}')
 
-        partitioned_columns = self._get_columns(connection, f"{table_name}$partitions", schema, **kw)
+        partitioned_columns = self._get_columns(connection, f'{table_name}$partitions', schema, **kw)
         partition_index = dict(
-            name="partition",
+            name='partition',
             column_names=[col['name'] for col in partitioned_columns],
             unique=False
         )
@@ -224,9 +223,9 @@ class TrinoDialect(DefaultDialect):
 
     def has_table(self, connection: Connection,
                   table_name: str, schema: str = None) -> bool:
-        query = "SHOW TABLES"
+        query = 'SHOW TABLES'
         if schema:
-            query = f"{query} FROM {self.identifier_preparer.quote_identifier(schema)}"
+            query = f'{query} FROM {self.identifier_preparer.quote_identifier(schema)}'
         query = f"{query} LIKE '{table_name}'"
         try:
             res = connection.execute(sql.text(query))
@@ -247,11 +246,11 @@ class TrinoDialect(DefaultDialect):
         return False
 
     def _get_server_version_info(self, connection: Connection) -> Tuple[int, ...]:
-        query = dedent("""
+        query = dedent('''
             SELECT *
             FROM system.runtime.nodes
             WHERE coordinator = true AND state = 'active'
-        """).strip()
+        ''').strip()
         res = connection.execute(sql.text(query)).first()
         version = int(res.node_version)
         return tuple([version])
@@ -285,11 +284,11 @@ class TrinoDialect(DefaultDialect):
         dbapi_conn._isolation_level = getattr(trino_dbapi.IsolationLevel, level)
 
     def get_isolation_level(self, dbapi_conn: trino_dbapi.Connection) -> str:
-        level_names = ["AUTOCOMMIT",
-                       "READ_UNCOMMITTED",
-                       "READ_COMMITTED",
-                       "REPEATABLE_READ",
-                       "SERIALIZABLE"]
+        level_names = ['AUTOCOMMIT',
+                       'READ_UNCOMMITTED',
+                       'READ_COMMITTED',
+                       'REPEATABLE_READ',
+                       'SERIALIZABLE']
         return level_names[dbapi_conn.isolation_level]
 
     def _get_full_table(self, table_name: str, schema: str = None, quote: bool = True) -> str:
