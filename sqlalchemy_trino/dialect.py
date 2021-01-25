@@ -120,7 +120,10 @@ class TrinoDialect(DefaultDialect):
         """Trino has no support for primary keys. Returns a dummy"""
         return dict(name=None, constrained_columns=[])
 
-    get_primary_keys = get_pk_constraint
+    def get_primary_keys(self, connection: Connection,
+                         table_name: str, schema: str = None, **kw) -> List[str]:
+        pk = self.get_pk_constraint(connection, table_name, schema)
+        return pk.get('constrained_columns')
 
     def get_foreign_keys(self, connection: Connection,
                          table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
