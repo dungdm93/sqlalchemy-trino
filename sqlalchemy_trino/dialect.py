@@ -92,6 +92,10 @@ class TrinoDialect(DefaultDialect):
                     table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
         if not self.has_table(connection, table_name, schema):
             raise exc.NoSuchTableError(f"schema={schema}, table={table_name}")
+        return self._get_columns(connection, table_name, schema, **kw)
+
+    def _get_columns(self, connection: Connection,
+                     table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
         schema = schema or self._get_default_schema_name(connection)
         query = dedent("""
             SELECT
@@ -179,7 +183,16 @@ class TrinoDialect(DefaultDialect):
 
     def get_indexes(self, connection: Connection,
                     table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
-        pass
+        if not self.has_table(connection, table_name, schema):
+            raise exc.NoSuchTableError(f"schema={schema}, table={table_name}")
+
+        partitioned_columns = self._get_columns(connection, f"{table_name}$partitions", schema, **kw)
+        partition_index = dict(
+            name="partition",
+            column_names=[col['name'] for col in partitioned_columns],
+            unique=False
+        )
+        return [partition_index, ]
 
     def get_unique_constraints(self, connection: Connection,
                                table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
