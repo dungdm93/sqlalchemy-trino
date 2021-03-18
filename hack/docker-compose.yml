@@ -44,7 +44,7 @@ services:
     ports:
     - 9083:9083
     volumes:
-    - ./scripts/:/usr/local/scripts/
+    - ./scripts/hive/:/usr/local/scripts/
     - ./configs/hive/:/opt/hive/conf/
     - warehouse_data:/data/warehouse
 
@@ -59,7 +59,7 @@ services:
     - 10000:10000
     - 10002:10002 # WebUI
     volumes:
-    - ./scripts/:/usr/local/scripts/
+    - ./scripts/hive/:/usr/local/scripts/
     - ./configs/hive/:/opt/hive/conf/
     - warehouse_data:/data/warehouse
 
