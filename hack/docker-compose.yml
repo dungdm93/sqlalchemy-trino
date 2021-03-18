@@ -75,6 +75,26 @@ services:
     - ./configs/trino/:/etc/trino/
     - warehouse_data:/data/warehouse
 
+  ##### Apache SuperSet #####
+  # Create an admin user
+  # > superset fab create-admin
+  # Load some data to play with
+  # > superset load_examples
+  # Create default roles and permissions
+  # > superset init
+  superset:
+    image: dungdm93/superset:1.0
+    command: [webserver]
+    environment:
+      SUPERSET_CONFIG_PATH: /etc/superset/superset_config.py
+      CELERY_CONFIG_PATH: /etc/superset/celeryconfig.py
+      PYTHONPATH: /app/
+    ports:
+    - 8088:8088
+    volumes:
+    - ./configs/superset:/etc/superset
+    - ../:/app/
+
 volumes:
   mysql_data:
   postgres_data:
