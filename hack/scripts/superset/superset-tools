@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+import argparse
+import sys
+import time
+from datetime import datetime
+
+from superset import config
+
+
+def wait_for_database(retries: int, interval: float):
+    from sqlalchemy import create_engine, sql
+    from sqlalchemy.engine.base import Engine
+    from sqlalchemy.exc import OperationalError
+
+    engine: Engine = create_engine(config.SQLALCHEMY_DATABASE_URI)
+    uri = repr(engine.url)
+    for i in range(retries):
+        try:
+            engine.execute(sql.text('SELECT 1')).scalar()
+        except OperationalError:
+            print(f'[{datetime.now()}] waiting for database at {uri}... Try {i + 1}/{retries}', file=sys.stderr)
+            time.sleep(interval)
+        else:
+            print(f'[{datetime.now()}] Connect to database at {uri} successfully')
+            return
+
+    sys.exit('SQLAlchemy database still unreachable, giving up')
+
+
+def wait_for_broker(retries: int, interval: float):
+    from kombu.connection import Connection
+    from kombu.exceptions import OperationalError
+
+    class errback:
+        def __init__(self, uri: str, max_retries: int):
+            self.uri = uri
+            self.count = 0
+            self.max_retries = max_retries
+
+        def __call__(self, exc, interval):
+            self.count += 1
+            msg = f'[{datetime.now()}] waiting for broker at {self.uri}... Try {self.count}/{self.max_retries}'
+            print(msg, file=sys.stderr)
+
+    try:
+        conn = Connection(config.CELERY_CONFIG.BROKER_URL)
+        uri = conn.as_uri()
+        conn.ensure_connection(errback=errback(uri, max_retries=retries),
+                               max_retries=retries, interval_start=interval, interval_max=interval)
+        print(f'[{datetime.now()}] Connect to broker at {uri} successfully')
+    except OperationalError:
+        sys.exit('Celery broker still unreachable, giving up')
+
+
+def build_argparse():
+    def wait_service(args: argparse.Namespace):
+        if args.service == 'database':
+            wait_for_database(args.retries, args.interval)
+        elif args.service == 'broker':
+            wait_for_broker(args.retries, args.interval)
+        else:
+            raise ValueError(f'Unknown service {args.service}')
+
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(title='sub-commands')
+
+    # wait sub-command
+    wait = subparsers.add_parser('wait', help='Waiting for external service start-up')
+    wait.add_argument('service', type=str, choices=['database', 'broker'],
+                      help='Service that waiting for')
+    wait.add_argument('--retries', type=int, default=30, help='Maximum number of times to retry')
+    wait.add_argument('--interval', type=float, default=3, help='The number of seconds sleeping for')
+    wait.set_defaults(func=wait_service)
+
+    return parser
+
+
+def main():
+    parser = build_argparse()
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == '__main__':
+    main()
