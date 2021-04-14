@@ -6,6 +6,7 @@ from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
 from sqlalchemy.engine.url import URL
 from trino.auth import BasicAuthentication
+import re
 
 from . import compiler
 from . import datatype
@@ -57,6 +58,9 @@ class TrinoDialect(DefaultDialect):
     # DML
     supports_empty_insert = False
     supports_multivalues_insert = True
+
+    # Version parser
+    __version_pattern = re.compile('(\d+).*')
 
     @classmethod
     def dbapi(cls):
@@ -264,7 +268,8 @@ class TrinoDialect(DefaultDialect):
             WHERE coordinator = true AND state = 'active'
         ''').strip()
         res = connection.execute(sql.text(query)).first()
-        version = int(res.node_version)
+        parsed_version = self.__version_pattern.match(res.node_version)
+        version = int(parsed_version.group(1)) if parsed_version else 0
         return tuple([version])
 
     def _get_default_schema_name(self, connection: Connection) -> Optional[str]:
