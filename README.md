@@ -4,6 +4,9 @@ _[Trino](https://trino.io/) (f.k.a PrestoSQL) dialect for SQLAlchemy._
 
 The primary purpose of this is provide a dialect for Trino that can be used with [Apache Superset](https://superset.apache.org/).
 But other use-cases should works as well.
+# Supported Trino version
+
+Trino version 352 and higher
 
 ## Installation
 The driver can either be installed through PyPi or from the source code.
