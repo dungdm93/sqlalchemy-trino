@@ -16,14 +16,9 @@ class TrinoResultMetaData:
     def _load(self):
         if self.__delegator is not None:
             return
-        if not self._is_fetched():
+        if not self.__cursor.description:
             raise Exception("Cursor must be loaded before call TrinoResultMetaData")
         self.__delegator = ResultMetaData(self.__parent, self.__cursor.description)
-
-    def _is_fetched(self):
-        query: TrinoQuery = self.__cursor._query  # noqa
-        result: TrinoResult = query._result  # noqa
-        return query.is_finished() or result.rownumber > 0
 
     def __getattr__(self, item):
         self._load()
