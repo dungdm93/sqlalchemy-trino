@@ -58,6 +58,7 @@ class TrinoDialect(DefaultDialect):
     # DML
     supports_empty_insert = False
     supports_multivalues_insert = True
+    postfetch_lastrowid = False
 
     # Version parser
     __version_pattern = re.compile(r'(\d+).*')
