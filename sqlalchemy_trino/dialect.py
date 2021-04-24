@@ -7,6 +7,8 @@ from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
 from sqlalchemy.engine.url import URL
 from trino.auth import BasicAuthentication
+from trino.client import TrinoQuery
+from trino.dbapi import Cursor
 
 from . import compiler
 from . import datatype
@@ -58,6 +60,7 @@ class TrinoDialect(DefaultDialect):
     # DML
     supports_empty_insert = False
     supports_multivalues_insert = True
+    postfetch_lastrowid = False
 
     # Version parser
     __version_pattern = re.compile(r'(\d+).*')
@@ -271,6 +274,19 @@ class TrinoDialect(DefaultDialect):
     def _get_default_schema_name(self, connection: Connection) -> Optional[str]:
         dbapi_connection: trino_dbapi.Connection = connection.connection
         return dbapi_connection.schema
+
+    def do_execute(self, cursor: Cursor, statement: str, parameters: Tuple[Any, ...],
+                   context: DefaultExecutionContext = None):
+        cursor.execute(statement, parameters)
+        if context and context.should_autocommit:
+            # SQL statement only submitted to Trino server when cursor.fetch*() is called.
+            # For DDL (CREATE/ALTER/DROP) and DML (INSERT/UPDATE/DELETE) statement, call cursor.description
+            # to force submit statement immediately.
+            d = cursor.description
+            # old trino client does not support eager-loading cursor.description
+            if d is None:
+                query: TrinoQuery = cursor._query  # noqa
+                query._result._rows += query.fetch()  # noqa
 
     def do_rollback(self, dbapi_connection):
         if dbapi_connection.transaction is not None:
