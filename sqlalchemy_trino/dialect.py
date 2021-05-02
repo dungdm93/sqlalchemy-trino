@@ -222,6 +222,7 @@ class TrinoDialect(DefaultDialect):
                 error.NOT_FOUND,
                 error.COLUMN_NOT_FOUND,
                 error.TABLE_NOT_FOUND,
+                error.NOT_SUPPORTED
             ):
                 return dict(text=None)
             raise
