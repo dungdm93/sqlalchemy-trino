@@ -75,7 +75,7 @@ class TrinoDialect(DefaultDialect):
     def create_connect_args(self, url: URL) -> Tuple[List[Any], Dict[str, Any]]:
         args, kwargs = super(TrinoDialect, self).create_connect_args(url)  # type: List[Any], Dict[str, Any]
 
-        db_parts = kwargs.pop('database', 'hive').split('/')
+        db_parts = kwargs.pop('database', 'system').split('/')
         if len(db_parts) == 1:
             kwargs['catalog'] = db_parts[0]
         elif len(db_parts) == 2:
