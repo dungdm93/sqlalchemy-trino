@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="sqlalchemy-trino",
-    version="0.2.2",
+    version="0.3.0",
     author="Dũng Đặng Minh",
     author_email="dungdm93@live.com",
     description="Trino dialect for SQLAlchemy",
