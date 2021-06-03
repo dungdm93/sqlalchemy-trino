@@ -1,6 +1,7 @@
 from typing import Optional
 
-from sqlalchemy.engine.result import ResultProxy, ResultMetaData
+from sqlalchemy.engine import ResultProxy
+from sqlalchemy.engine.result import ResultMetaData
 from trino.client import TrinoQuery, TrinoResult  # noqa
 from trino.dbapi import Cursor
 
