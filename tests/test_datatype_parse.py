@@ -2,7 +2,6 @@ import pytest
 from assertpy import assert_that
 from sqlalchemy.sql.sqltypes import *
 from sqlalchemy.sql.type_api import TypeEngine
-
 from sqlalchemy_trino import datatype
 from sqlalchemy_trino.datatype import MAP, ROW
 
@@ -79,6 +78,8 @@ parse_row_testcases = {
     'row(a varchar(20), b decimal(20,3))': ROW(dict(a=VARCHAR(20), b=DECIMAL(20, 3))),
     'row(x array(varchar(10)), y array(array(varchar(10))), z decimal(20,3))':
         ROW(dict(x=ARRAY(VARCHAR(10)), y=ARRAY(VARCHAR(10), dimensions=2), z=DECIMAL(20, 3))),
+    'row(x timestamp(6) with time zone)':
+        ROW(dict(x=TIMESTAMP())),
 }
 
 
