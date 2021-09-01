@@ -85,7 +85,8 @@ class TrinoDialect(DefaultDialect):
             raise ValueError(f'Unexpected database format {url.database}')
 
         username = kwargs.pop('username', 'anonymous')
-        kwargs['user'] = username
+        session_user = kwargs.pop('sessionUser', username)
+        kwargs['user'] = session_user
 
         password = kwargs.pop('password', None)
         if password:
