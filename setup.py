@@ -32,7 +32,7 @@ setuptools.setup(
     ],
     python_requires='>=3.7',
     install_requires=[
-        "sqlalchemy~=1.3",
+        "sqlalchemy~=1.3.0",
         "trino~=0.305",
     ],
     entry_points={
