@@ -143,7 +143,7 @@ def parse_sqltype(type_str: str) -> TypeEngine:
         attr_types: Dict[str, SQLType] = {}
         for attr_str in split(type_opts):
             outputs = list(split(attr_str.strip(), delimiter=' '))
-            name, attr_type_str = outputs[:2]
+            name, attr_type_str = outputs[0], " ".join(outputs[1:])
             attr_type = parse_sqltype(attr_type_str)
             attr_types[name] = attr_type
         return ROW(attr_types)
@@ -158,5 +158,3 @@ def parse_sqltype(type_str: str) -> TypeEngine:
         return type_class(**type_kwargs)  # TODO: handle time/timestamp(p) precision
     return type_class(*type_args)
 
-if __name__ == "__main__":
-    parse_sqltype("row(min timestamp(6) with time zone, max timestamp(6) with time zone, null_count bigint)")
