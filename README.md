@@ -46,3 +46,29 @@ engine = create_engine(
   'trino://<username>@<host>:<port>/?accessToken=a-jwt-token',
 )
 ```
+
+**Notice**: When using username and password, it will connect to Trino over TLS
+connection automatically.
+
+### User impersonation
+
+It supports user impersonation with username and password based authentication only.
+
+You can pass the session user (a.k.a., the user that will be impersonated) via
+either [`connect_args`](https://docs.sqlalchemy.org/en/13/core/engines.html#sqlalchemy.create_engine.params.connect_args)
+or the query string parameter `sessionUser`:
+
+```Python
+from sqlalchemy.engine import create_engine
+
+# pass session user via connect_args
+engine = create_engine(
+  'trino://<username>:<password>@<host>:<port>/',
+  connect_args={'user': 'user-to-be-impersonated'},
+)
+
+# pass session user via a query string parameter
+engine = create_engine(
+  'trino://<username>:<password>@<host>:<port>/?sessionUser=user-to-be-impersonated',
+)
+```
