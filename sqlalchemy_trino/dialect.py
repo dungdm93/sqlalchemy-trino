@@ -6,8 +6,9 @@ from sqlalchemy import exc, sql
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
 from sqlalchemy.engine.url import URL
-from trino.auth import BasicAuthentication
+from trino.auth import BasicAuthentication, JWTAuthentication
 from trino.client import TrinoQuery
+from trino.constants import HTTPS
 from trino.dbapi import Cursor
 
 from . import compiler
@@ -89,9 +90,14 @@ class TrinoDialect(DefaultDialect):
         kwargs['user'] = session_user
 
         password = kwargs.pop('password', None)
+        jwt_token = kwargs.pop('accessToken', None)
         if password:
-            kwargs['http_scheme'] = 'https'
             kwargs['auth'] = BasicAuthentication(username, password)
+        elif jwt_token:
+            kwargs['auth'] = JWTAuthentication(jwt_token)
+
+        if 'auth' in kwargs:
+            kwargs['http_scheme'] = HTTPS
 
         return args, kwargs
 

@@ -25,3 +25,24 @@ To connect from SQLAlchemy to Trino, use connection string (URL) following this 
 ```
 trino://<username>:<password>@<host>:<port>/catalog/[schema]
 ```
+
+### JWT authentication
+
+You can pass the JWT token via either `connect_args` or the query string
+parameter `accessToken`:
+
+```Python
+from sqlalchemy.engine import create_engine
+from trino.auth import JWTAuthentication
+
+# pass access token via connect_args
+engine = create_engine(
+  'trino://<username>@<host>:<port>/',
+  connect_args={'auth': JWTAuthentication('a-jwt-token')},
+)
+
+# pass access token via the query string param accessToken
+engine = create_engine(
+  'trino://<username>@<host>:<port>/?accessToken=a-jwt-token',
+)
+```
