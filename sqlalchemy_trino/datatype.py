@@ -142,7 +142,8 @@ def parse_sqltype(type_str: str) -> TypeEngine:
     elif type_name == "row":
         attr_types: Dict[str, SQLType] = {}
         for attr_str in split(type_opts):
-            name, attr_type_str = split(attr_str.strip(), delimiter=' ')
+            outputs = list(split(attr_str.strip(), delimiter=' '))
+            name, attr_type_str = outputs[0], " ".join(outputs[1:])
             attr_type = parse_sqltype(attr_type_str)
             attr_types[name] = attr_type
         return ROW(attr_types)
@@ -156,3 +157,4 @@ def parse_sqltype(type_str: str) -> TypeEngine:
         type_kwargs = dict(timezone=type_str.endswith("with time zone"))
         return type_class(**type_kwargs)  # TODO: handle time/timestamp(p) precision
     return type_class(*type_args)
+
