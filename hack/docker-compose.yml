@@ -22,7 +22,7 @@ services:
   # Help:
   # > psql -U postgres [-W]
   postgres:
-    image: postgres:11-alpine
+    image: postgres:13-alpine
     environment:
       POSTGRES_PASSWORD: SuperSecr3t
     ports:
@@ -68,7 +68,7 @@ services:
   # Help:
   # > trino --server=localhost:8080 [--catalog=mysql] [--schema=sakila]
   trino:
-    image: trinodb/trino:351
+    image: trinodb/trino:362
     ports:
     - 8080:8080
     volumes:
