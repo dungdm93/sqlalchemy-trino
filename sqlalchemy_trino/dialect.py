@@ -278,23 +278,6 @@ class TrinoDialect(DefaultDialect):
         if dbapi_connection.transaction is not None:
             dbapi_connection.rollback()
 
-    def do_begin_twophase(self, connection: Connection, xid):
-        pass
-
-    def do_prepare_twophase(self, connection: Connection, xid):
-        pass
-
-    def do_rollback_twophase(self, connection: Connection, xid,
-                             is_prepared: bool = True, recover: bool = False) -> None:
-        pass
-
-    def do_commit_twophase(self, connection: Connection, xid,
-                           is_prepared: bool = True, recover: bool = False) -> None:
-        pass
-
-    def do_recover_twophase(self, connection: Connection) -> None:
-        pass
-
     def set_isolation_level(self, dbapi_conn: trino_dbapi.Connection, level: str) -> None:
         dbapi_conn._isolation_level = getattr(trino_dbapi.IsolationLevel, level)
 
