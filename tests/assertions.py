@@ -13,6 +13,7 @@ def assert_sqltype(this: SQLType, that: SQLType):
     if isinstance(this, ARRAY):
         assert_sqltype(this.item_type, that.item_type)
         if this.dimensions is None or this.dimensions == 1:
+            # ARRAY(dimensions=None) == ARRAY(dimensions=1)
             assert_that(that.dimensions).is_in(None, 1)
         else:
             assert_that(this.dimensions).is_equal_to(this.dimensions)
@@ -21,9 +22,9 @@ def assert_sqltype(this: SQLType, that: SQLType):
         assert_sqltype(this.value_type, that.value_type)
     elif isinstance(this, ROW):
         assert_that(len(this.attr_types)).is_equal_to(len(that.attr_types))
-        for name, this_attr in this.attr_types.items():
-            that_attr = this.attr_types[name]
-            assert_sqltype(this_attr, that_attr)
+        for (this_attr, that_attr) in zip(this.attr_types, that.attr_types):
+            assert_that(this_attr[0]).is_equal_to(that_attr[0])
+            assert_sqltype(this_attr[1], that_attr[1])
     else:
         assert_that(str(this)).is_equal_to(str(that))
 

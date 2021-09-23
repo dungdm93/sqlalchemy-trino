@@ -19,10 +19,34 @@ def test_parse_simple_type(type_str: str, sql_type: TypeEngine):
     assert_that(actual_type).is_equal_to(sql_type)
 
 
+parse_cases_testcases = {
+    'char(10)': CHAR(10),
+    'Char(10)': CHAR(10),
+    'VARCHAR(10)': VARCHAR(10),
+    'varCHAR(10)': VARCHAR(10),
+    'VARchar(10)': VARCHAR(10),
+}
+
+
+@pytest.mark.parametrize(
+    'type_str, sql_type',
+    parse_cases_testcases.items(),
+    ids=parse_cases_testcases.keys()
+)
+def test_parse_cases(type_str: str, sql_type: TypeEngine):
+    actual_type = datatype.parse_sqltype(type_str)
+    assert_that(actual_type).is_sqltype(sql_type)
+
+
 parse_type_options_testcases = {
+    'CHAR(10)': CHAR(10),
     'VARCHAR(10)': VARCHAR(10),
     'DECIMAL(20)': DECIMAL(20),
     'DECIMAL(20, 3)': DECIMAL(20, 3),
+    # TODO
+    # TIME(3)
+    # TIMESTAMP(6)
+    # TIMESTAMP(9) WITH TIME ZONE
 }
 
 
@@ -41,6 +65,7 @@ parse_array_testcases = {
     'array(varchar(10))': ARRAY(VARCHAR(10)),
     'array(decimal(20,3))': ARRAY(DECIMAL(20, 3)),
     'array(array(varchar(10)))': ARRAY(VARCHAR(10), dimensions=2),
+    'array(map(char, integer))': ARRAY(MAP(CHAR(), INTEGER()))
 }
 
 
@@ -75,10 +100,38 @@ def test_parse_map(type_str: str, sql_type: ARRAY):
 
 
 parse_row_testcases = {
-    'row(a integer, b varchar)': ROW(dict(a=INTEGER(), b=VARCHAR())),
-    'row(a varchar(20), b decimal(20,3))': ROW(dict(a=VARCHAR(20), b=DECIMAL(20, 3))),
+    'row(a integer, b varchar)':
+        ROW(attr_types=[
+            ("a", INTEGER()),
+            ("b", VARCHAR()),
+        ]),
+    'row(a varchar(20), b decimal(20,3))':
+        ROW(attr_types=[
+            ("a", VARCHAR(20)),
+            ("b", DECIMAL(20, 3)),
+        ]),
     'row(x array(varchar(10)), y array(array(varchar(10))), z decimal(20,3))':
-        ROW(dict(x=ARRAY(VARCHAR(10)), y=ARRAY(VARCHAR(10), dimensions=2), z=DECIMAL(20, 3))),
+        ROW(attr_types=[
+            ("x", ARRAY(VARCHAR(10))),
+            ("y", ARRAY(VARCHAR(10), dimensions=2)),
+            ("z", DECIMAL(20, 3)),
+        ]),
+    'row(min timestamp(6) with time zone, max timestamp(6) with time zone)':
+        ROW(attr_types=[
+            ("min", TIMESTAMP(timezone=True)),
+            ("max", TIMESTAMP(timezone=True)),
+        ]),
+    'row("first name" varchar, "last name" varchar)':
+        ROW(attr_types=[
+            ("first name", VARCHAR()),
+            ("last name", VARCHAR()),
+        ]),
+    'row("foo,bar" varchar, "foo(bar)" varchar, "foo\\"bar" varchar)':
+        ROW(attr_types=[
+            (r'foo,bar', VARCHAR()),
+            (r'foo(bar)', VARCHAR()),
+            (r'foo"bar', VARCHAR()),
+        ]),
 }
 
 

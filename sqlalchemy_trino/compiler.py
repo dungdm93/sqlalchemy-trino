@@ -13,9 +13,11 @@ RESERVED_WORDS = {
     "create",
     "cross",
     "cube",
+    "current_catalog",
     "current_date",
     "current_path",
     "current_role",
+    "current_schema",
     "current_time",
     "current_timestamp",
     "current_user",
@@ -62,6 +64,7 @@ RESERVED_WORDS = {
     "right",
     "rollup",
     "select",
+    "skip",
     "table",
     "then",
     "true",
@@ -92,7 +95,7 @@ class TrinoTypeCompiler(compiler.GenericTypeCompiler):
         elif 32 < precision <= 64:
             return self.visit_DOUBLE(type_, **kw)
         else:
-            raise ValueError(f"type.precision={type_.precision} is invalid")
+            raise ValueError(f"type.precision must be in range [0, 64], got {type_.precision}")
 
     def visit_DOUBLE(self, type_, **kw):
         return "DOUBLE"
