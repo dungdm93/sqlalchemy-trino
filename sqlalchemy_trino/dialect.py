@@ -7,7 +7,6 @@ from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
 from sqlalchemy.engine.url import URL
 from trino.auth import BasicAuthentication, JWTAuthentication
-from trino.client import TrinoQuery
 from trino.constants import HTTPS
 from trino.dbapi import Cursor
 
@@ -95,11 +94,12 @@ class TrinoDialect(DefaultDialect):
         query = dedent('''
             SELECT
                 "column_name",
+                "data_type",
                 "column_default",
-                "is_nullable",
-                "data_type"
+                UPPER("is_nullable") AS "is_nullable"
             FROM "information_schema"."columns"
-            WHERE "table_schema" = :schema AND "table_name" = :table
+            WHERE "table_schema" = :schema
+              AND "table_name" = :table
             ORDER BY "ordinal_position" ASC
         ''').strip()
         res = connection.execute(sql.text(query), schema=schema, table=table_name)
@@ -108,7 +108,7 @@ class TrinoDialect(DefaultDialect):
             column = dict(
                 name=record.column_name,
                 type=datatype.parse_sqltype(record.data_type),
-                nullable=(record.is_nullable or '').upper() == 'YES',
+                nullable=record.is_nullable == 'YES',
                 default=record.column_default,
             )
             columns.append(column)
@@ -122,7 +122,7 @@ class TrinoDialect(DefaultDialect):
     def get_primary_keys(self, connection: Connection,
                          table_name: str, schema: str = None, **kw) -> List[str]:
         pk = self.get_pk_constraint(connection, table_name, schema)
-        return pk.get('constrained_columns')
+        return pk.get('constrained_columns')  # type: List[str]
 
     def get_foreign_keys(self, connection: Connection,
                          table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
@@ -130,16 +130,24 @@ class TrinoDialect(DefaultDialect):
         return []
 
     def get_schema_names(self, connection: Connection, **kw) -> List[str]:
-        query = 'SHOW SCHEMAS'
+        query = dedent('''
+            SELECT "schema_name"
+            FROM "information_schema"."schemata"
+        ''').strip()
         res = connection.execute(sql.text(query))
-        return [row.Schema for row in res]
+        return [row.schema_name for row in res]
 
     def get_table_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
-        query = 'SHOW TABLES'
-        if schema:
-            query = f'{query} FROM {self.identifier_preparer.quote_identifier(schema)}'
-        res = connection.execute(sql.text(query))
-        return [row.Table for row in res]
+        schema = schema or self._get_default_schema_name(connection)
+        if schema is None:
+            raise exc.NoSuchTableError('schema is required')
+        query = dedent('''
+            SELECT "table_name"
+            FROM "information_schema"."tables"
+            WHERE "table_schema" = :schema
+        ''').strip()
+        res = connection.execute(sql.text(query), schema=schema)
+        return [row.table_name for row in res]
 
     def get_temp_table_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
         """Trino has no support for temporary tables. Returns an empty list."""
@@ -162,19 +170,17 @@ class TrinoDialect(DefaultDialect):
         return []
 
     def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw) -> str:
-        full_view = self._get_full_table(view_name, schema)
-        query = f'SHOW CREATE VIEW {full_view}'
-        try:
-            res = connection.execute(sql.text(query))
-            return res.scalar()
-        except error.TrinoQueryError as e:
-            if e.error_name in (
-                error.TABLE_NOT_FOUND,
-                error.SCHEMA_NOT_FOUND,
-                error.CATALOG_NOT_FOUND,
-            ):
-                raise exc.NoSuchTableError(full_view) from e
-            raise
+        schema = schema or self._get_default_schema_name(connection)
+        if schema is None:
+            raise exc.NoSuchTableError('schema is required')
+        query = dedent('''
+            SELECT "view_definition"
+            FROM "information_schema"."views"
+            WHERE "table_schema" = :schema
+              AND "table_name" = :view
+        ''').strip()
+        res = connection.execute(sql.text(query), schema=schema, view=view_name)
+        return res.scalar()
 
     def get_indexes(self, connection: Connection,
                     table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
@@ -189,6 +195,10 @@ class TrinoDialect(DefaultDialect):
         )
         return [partition_index, ]
 
+    def get_sequence_names(self, connection: Connection, schema: str = None, **kw) -> List[str]:
+        """Trino has no support for sequences. Returns an empty list."""
+        return []
+
     def get_unique_constraints(self, connection: Connection,
                                table_name: str, schema: str = None, **kw) -> List[Dict[str, Any]]:
         """Trino has no support for unique constraints. Returns an empty list."""
@@ -201,7 +211,7 @@ class TrinoDialect(DefaultDialect):
 
     def get_table_comment(self, connection: Connection,
                           table_name: str, schema: str = None, **kw) -> Dict[str, Any]:
-        properties_table = self._get_full_table(f"{table_name}$properties", schema)
+        properties_table = self._get_full_table(f'{table_name}$properties', schema)
         query = f'SELECT "comment" FROM {properties_table}'
         try:
             res = connection.execute(sql.text(query))
@@ -217,40 +227,30 @@ class TrinoDialect(DefaultDialect):
             raise
 
     def has_schema(self, connection: Connection, schema: str) -> bool:
-        query = f"SHOW SCHEMAS LIKE '{schema}'"
-        try:
-            res = connection.execute(sql.text(query))
-            return res.first() is not None
-        except error.TrinoQueryError as e:
-            if e.error_name in (
-                error.TABLE_NOT_FOUND,
-                error.SCHEMA_NOT_FOUND,
-                error.CATALOG_NOT_FOUND,
-            ):
-                return False
-            raise
+        query = dedent('''
+            SELECT "schema_name"
+            FROM "information_schema"."schemata"
+            WHERE "schema_name" = :schema
+        ''').strip()
+        res = connection.execute(sql.text(query), schema=schema)
+        return res.first() is not None
 
     def has_table(self, connection: Connection,
-                  table_name: str, schema: str = None) -> bool:
-        query = 'SHOW TABLES'
-        if schema:
-            query = f'{query} FROM {self.identifier_preparer.quote_identifier(schema)}'
-        query = f"{query} LIKE '{table_name}'"
-        try:
-            res = connection.execute(sql.text(query))
-            return res.first() is not None
-        except error.TrinoQueryError as e:
-            if e.error_name in (
-                error.TABLE_NOT_FOUND,
-                error.SCHEMA_NOT_FOUND,
-                error.CATALOG_NOT_FOUND,
-                error.MISSING_SCHEMA_NAME,
-            ):
-                return False
-            raise
+                  table_name: str, schema: str = None, **kw) -> bool:
+        schema = schema or self._get_default_schema_name(connection)
+        if schema is None:
+            return False
+        query = dedent('''
+            SELECT "table_name"
+            FROM "information_schema"."tables"
+            WHERE "table_schema" = :schema
+              AND "table_name" = :table
+        ''').strip()
+        res = connection.execute(sql.text(query), schema=schema, table=table_name)
+        return res.first() is not None
 
     def has_sequence(self, connection: Connection,
-                     sequence_name: str, schema: str = None) -> bool:
+                     sequence_name: str, schema: str = None, **kw) -> bool:
         """Trino has no support for sequence. Returns False indicate that given sequence does not exists."""
         return False
 
@@ -274,28 +274,11 @@ class TrinoDialect(DefaultDialect):
             # to force submit statement immediately.
             cursor.description  # noqa
 
-    def do_rollback(self, dbapi_connection):
+    def do_rollback(self, dbapi_connection: trino_dbapi.Connection):
         if dbapi_connection.transaction is not None:
             dbapi_connection.rollback()
 
-    def do_begin_twophase(self, connection: Connection, xid):
-        pass
-
-    def do_prepare_twophase(self, connection: Connection, xid):
-        pass
-
-    def do_rollback_twophase(self, connection: Connection, xid,
-                             is_prepared: bool = True, recover: bool = False) -> None:
-        pass
-
-    def do_commit_twophase(self, connection: Connection, xid,
-                           is_prepared: bool = True, recover: bool = False) -> None:
-        pass
-
-    def do_recover_twophase(self, connection: Connection) -> None:
-        pass
-
-    def set_isolation_level(self, dbapi_conn: trino_dbapi.Connection, level) -> None:
+    def set_isolation_level(self, dbapi_conn: trino_dbapi.Connection, level: str) -> None:
         dbapi_conn._isolation_level = getattr(trino_dbapi.IsolationLevel, level)
 
     def get_isolation_level(self, dbapi_conn: trino_dbapi.Connection) -> str:
