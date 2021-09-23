@@ -15,30 +15,12 @@ from . import compiler
 from . import datatype
 from . import dbapi as trino_dbapi
 from . import error
-from . import result
-
-
-class TrinoExecutionContext(DefaultExecutionContext):
-    def get_result_proxy(self):
-        return result.TrinoResultProxy(self)
-
-    # all unimplemented stuffs
-
-    def create_server_side_cursor(self):
-        super(TrinoExecutionContext, self).create_server_side_cursor()
-
-    def result(self):
-        super(TrinoExecutionContext, self).result()
-
-    def get_rowcount(self):
-        super(TrinoExecutionContext, self).get_rowcount()
 
 
 class TrinoDialect(DefaultDialect):
     name = 'trino'
     driver = 'rest'
 
-    execution_ctx_cls = TrinoExecutionContext
     statement_compiler = compiler.TrinoSQLCompiler
     ddl_compiler = compiler.TrinoDDLCompiler
     type_compiler = compiler.TrinoTypeCompiler
@@ -290,11 +272,7 @@ class TrinoDialect(DefaultDialect):
             # SQL statement only submitted to Trino server when cursor.fetch*() is called.
             # For DDL (CREATE/ALTER/DROP) and DML (INSERT/UPDATE/DELETE) statement, call cursor.description
             # to force submit statement immediately.
-            d = cursor.description
-            # old trino client does not support eager-loading cursor.description
-            if d is None:
-                query: TrinoQuery = cursor._query  # noqa
-                query._result._rows += query.fetch()  # noqa
+            cursor.description  # noqa
 
     def do_rollback(self, dbapi_connection):
         if dbapi_connection.transaction is not None:
