@@ -5,6 +5,45 @@ from sqlalchemy import util
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.type_api import TypeEngine
 
+SQLType = Union[TypeEngine, Type[TypeEngine]]
+
+
+class DOUBLE(sqltypes.Float):
+    __visit_name__ = "DOUBLE"
+
+
+class MAP(TypeEngine):
+    __visit_name__ = "MAP"
+
+    def __init__(self, key_type: SQLType, value_type: SQLType):
+        if isinstance(key_type, type):
+            key_type = key_type()
+        self.key_type: TypeEngine = key_type
+
+        if isinstance(value_type, type):
+            value_type = value_type()
+        self.value_type: TypeEngine = value_type
+
+    @property
+    def python_type(self):
+        return dict
+
+
+class ROW(TypeEngine):
+    __visit_name__ = "ROW"
+
+    def __init__(self, attr_types: List[Tuple[Optional[str], SQLType]]):
+        self.attr_types: List[Tuple[Optional[str], SQLType]] = []
+        for attr_name, attr_type in attr_types:
+            if isinstance(attr_type, type):
+                attr_type = attr_type()
+            self.attr_types.append((attr_name, attr_type))
+
+    @property
+    def python_type(self):
+        return list
+
+
 # https://trino.io/docs/current/language/types.html
 _type_map = {
     # === Boolean ===
@@ -13,12 +52,13 @@ _type_map = {
     # === Integer ===
     'tinyint': sqltypes.SMALLINT,
     'smallint': sqltypes.SMALLINT,
+    'int': sqltypes.INTEGER,
     'integer': sqltypes.INTEGER,
     'bigint': sqltypes.BIGINT,
 
     # === Floating-point ===
-    'real': sqltypes.FLOAT,
-    'double': sqltypes.FLOAT,
+    'real': sqltypes.REAL,
+    'double': DOUBLE,
 
     # === Fixed-precision ===
     'decimal': sqltypes.DECIMAL,
@@ -51,49 +91,27 @@ _type_map = {
     # 'tdigest': TDIGEST,
 }
 
-SQLType = Union[TypeEngine, Type[TypeEngine]]
+
+def unquote(string: str, quote: str = '"', escape: str = '\\') -> str:
+    """
+    If string starts and ends with a quote, unquote it
+    """
+    if string.startswith(quote) and string.endswith(quote):
+        string = string[1:-1]
+        string = string.replace(f"{escape}{quote}", quote) \
+            .replace(f"{escape}{escape}", escape)
+    return string
 
 
-class MAP(TypeEngine):
-    __visit_name__ = "MAP"
-
-    def __init__(self, key_type: SQLType, value_type: SQLType):
-        if isinstance(key_type, type):
-            key_type = key_type()
-        self.key_type: TypeEngine = key_type
-
-        if isinstance(value_type, type):
-            value_type = value_type()
-        self.value_type: TypeEngine = value_type
-
-    @property
-    def python_type(self):
-        return dict
-
-
-class ROW(TypeEngine):
-    __visit_name__ = "ROW"
-
-    def __init__(self, attr_types: Dict[str, SQLType]):
-        for name, attr_type in attr_types.items():
-            if isinstance(attr_type, type):
-                attr_type = attr_type()
-                attr_types[name] = attr_type
-        self.attr_types: Dict[str, TypeEngine] = attr_types
-
-    @property
-    def python_type(self):
-        return dict
-
-
-def split(string: str, delimiter: str = ',',
-          quote: str = '"', escaped_quote: str = r'\"',
-          open_bracket: str = '(', close_bracket: str = ')') -> Iterator[str]:
+def aware_split(string: str, delimiter: str = ',', maxsplit: int = -1,
+                quote: str = '"', escaped_quote: str = r'\"',
+                open_bracket: str = '(', close_bracket: str = ')') -> Iterator[str]:
     """
     A split function that is aware of quotes and brackets/parentheses.
 
     :param string: string to split
     :param delimiter: string defining where to split, usually a comma or space
+    :param maxsplit: Maximum number of splits to do. -1 (default) means no limit.
     :param quote: string, either a single or a double quote
     :param escaped_quote: string representing an escaped quote
     :param open_bracket: string, either [, {, < or (
@@ -102,11 +120,20 @@ def split(string: str, delimiter: str = ',',
     parens = 0
     quotes = False
     i = 0
+    if maxsplit < -1:
+        raise ValueError(f"maxsplit must be >= -1, got {maxsplit}")
+    elif maxsplit == 0:
+        yield string
+        return
     for j, character in enumerate(string):
         complete = parens == 0 and not quotes
         if complete and character == delimiter:
+            if maxsplit != -1:
+                maxsplit -= 1
             yield string[i:j]
             i = j + len(delimiter)
+            if maxsplit == 0:
+                break
         elif character == open_bracket:
             parens += 1
         elif character == close_bracket:
@@ -135,16 +162,17 @@ def parse_sqltype(type_str: str) -> TypeEngine:
             return sqltypes.ARRAY(item_type.item_type, dimensions=dimensions)
         return sqltypes.ARRAY(item_type)
     elif type_name == "map":
-        key_type_str, value_type_str = split(type_opts)
+        key_type_str, value_type_str = aware_split(type_opts)
         key_type = parse_sqltype(key_type_str)
         value_type = parse_sqltype(value_type_str)
         return MAP(key_type, value_type)
     elif type_name == "row":
-        attr_types: Dict[str, SQLType] = {}
-        for attr_str in split(type_opts):
-            name, attr_type_str = split(attr_str.strip(), delimiter=' ')
+        attr_types: List[Tuple[Optional[str], SQLType]] = []
+        for attr in aware_split(type_opts):
+            attr_name, attr_type_str = aware_split(attr.strip(), delimiter=' ', maxsplit=1)
+            attr_name = unquote(attr_name)
             attr_type = parse_sqltype(attr_type_str)
-            attr_types[name] = attr_type
+            attr_types.append((attr_name, attr_type))
         return ROW(attr_types)
 
     if type_name not in _type_map:
