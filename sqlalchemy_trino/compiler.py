@@ -80,7 +80,13 @@ RESERVED_WORDS = {
 
 
 class TrinoSQLCompiler(compiler.SQLCompiler):
-    pass
+    def limit_clause(self, select, **kw):
+        text = ""
+        if select._offset_clause is not None:
+            text += " OFFSET " + self.process(select._offset_clause, **kw)
+        if select._limit_clause is not None:
+            text += "\n LIMIT " + self.process(select._limit_clause, **kw)
+        return text
 
 
 class TrinoDDLCompiler(compiler.DDLCompiler):
