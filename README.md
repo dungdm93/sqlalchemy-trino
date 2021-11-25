@@ -72,3 +72,28 @@ engine = create_engine(
   'trino://<username>:<password>@<host>:<port>/?sessionUser=user-to-be-impersonated',
 )
 ```
+
+### Pandas support
+```python
+import pandas as pd
+from pandas import DataFrame
+import sqlalchemy_trino
+from sqlalchemy.engine import Engine, Connection
+
+def trino_pandas_write(engine: Engine):
+    df: DataFrame = pd.read_csv("tests/data/population.csv")
+    df.to_sql(con=engine, schema="default", name="abcxyz", method="multi", index=False)
+
+    print(df)
+
+
+def trino_pandas_read(engine: Engine):
+    connection: Connection = engine.connect()
+    df = pd.read_sql("SELECT * FROM public.foobar", connection)
+
+    print(df)
+```
+
+**Note**: in `df.to_sql` following params is required:
+* `index=False` because index is not supported in Trino.
+* `method="multi"`: currently `method=None` (default) is not working because Trino dbapi is not support [`executemany`](https://github.com/trinodb/trino-python-client/blob/77adbc48cd5061b2c55e56225d67dd7822284b73/trino/dbapi.py#L410-L411) yet
