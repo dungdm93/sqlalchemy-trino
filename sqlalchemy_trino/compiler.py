@@ -80,6 +80,11 @@ RESERVED_WORDS = {
 
 
 class TrinoSQLCompiler(compiler.SQLCompiler):
+    """
+    Trino support only OFFSET...LIMIT but not LIMIT...OFFSET syntax.
+    See https://github.com/trinodb/trino/issues/4335.
+    """
+
     def limit_clause(self, select, **kw):
         text = ""
         if select._offset_clause is not None:
