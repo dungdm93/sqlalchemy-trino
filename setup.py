@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="sqlalchemy-trino",
-    version="0.4.1",
+    version="0.5.0",
     author="Dũng Đặng Minh",
     author_email="dungdm93@live.com",
     description="Trino dialect for SQLAlchemy",
@@ -13,7 +13,6 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/dungdm93/sqlalchemy-trino",
     keywords=["sqlalchemy", "trino"],
-    packages=["sqlalchemy_trino"],
     license="Apache 2.0",
     platforms=["any"],
     classifiers=[
@@ -32,12 +31,6 @@ setuptools.setup(
     ],
     python_requires='>=3.7',
     install_requires=[
-        "sqlalchemy~=1.3",
-        "trino==0.306",
+        "trino[sqlalchemy]>=0.310",
     ],
-    entry_points={
-        "sqlalchemy.dialects": [
-            "trino = sqlalchemy_trino.dialect:TrinoDialect",
-        ]
-    },
 )

@@ -1,10 +1,13 @@
 sqlalchemy-trino
 ================
-_[Trino](https://trino.io/) (f.k.a PrestoSQL) dialect for SQLAlchemy._
 
-The primary purpose of this is provide a dialect for Trino that can be used with [Apache Superset](https://superset.apache.org/).
-But other use-cases should works as well.
-# Supported Trino version
+## ⚠️ Deprecation and Archive Notice
+`sqlalchemy-trino` was developed as _[Trino](https://trino.io/) (f.k.a PrestoSQL) dialect for SQLAlchemy._
+Since trinodb/trino-python-client#81, all code of `sqlalchemy-trino` is donated and merged into upstream project.
+So now, this project is no longer active and consider as deprecated.
+
+
+## Supported Trino version
 
 Trino version 352 and higher
 
